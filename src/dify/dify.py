@@ -13,13 +13,13 @@ class Dify:
         app_name: str,
         config: DotMap,
     ) -> None:
-        self.app = config.dify[app_name]
+        self.app = config.dify.get(app_name, None)
         self.headers = {
             "Authorization": f"Bearer {self.app.api_key}",
         }
         self.user_name = config.user_name
 
-    def _filepath_to_content_type(self, filepath: str) -> str:
+    def _filepath_to_content_type(self, filepath: Path) -> str:
         image_extensions = {
             "png",
             "jpeg",
@@ -27,32 +27,31 @@ class Dify:
             "webp",
             "gif",
         }
-        if (extension := filepath.suffix.replace(".", "")) in image_extensions:
-            content_type = f"image/{extension}"
-        return content_type
-
-    def _file_id_to_args(self, file_id: str):
-        return {
-            "type": "image",
-            "transfer_method": "local_file",
-            "upload_file_id": file_id,
-        }
+        extension = filepath.suffix.replace(".", "")
+        if extension in image_extensions:
+            return f"image/{extension}"
+        else:
+            raise NotImplementedError
 
     async def completion(
-        self, inputs: dict[str, str], files: list[dict[str, str]] = None
+        self,
+        query: str,
+        inputs: dict[str, str] = None,
+        files: list[dict[str, str]] = None,
     ) -> str:
-        end_point = "/completion-messages"
-        headers = {**self.headers, "Content-Type": "application/json"}
-        data = {
-            "inputs": inputs,
-            "response_mode": "blocking",
-            "user": self.user_name,
-            "files": files,
+        params = {
+            "url": Dify.base_url + "/completion-messages",
+            "headers": {**self.headers, "Content-Type": "application/json"},
+            "json": {
+                "inputs": {"query": query, **(inputs if inputs is not None else {})},
+                "response_mode": "blocking",
+                "user": self.user_name,
+                "files": files,
+            },
         }
+
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                url=Dify.base_url + end_point, headers=headers, json=data
-            ) as response:
+            async with session.post(**params) as response:
                 if response.status != 200:
                     raise Exception(
                         f"Error: {response.status} - {await response.text()}"
@@ -68,27 +67,29 @@ class Dify:
         response_mode: str = "blocking",
     ) -> str:
         # check args
-        if response_mode not in (response_modes := {"blocking", "streaming"}):
+        response_modes = {"blocking", "streaming"}
+        if response_mode not in response_modes:
             raise ValueError(
                 f"response_mode must be in {str(response_modes)}, but got '{response_mode}'"
             )
         if self.app.type == "agent" and response_mode == "blocking":
             raise NotImplementedError
-        
-        end_point = "/chat-messages"
-        headers = {**self.headers, "Content-Type": "application/json"}
-        data = {
-            "inputs": inputs,
-            "query": query,
-            "response_mode": response_mode,
-            "user": self.user_name,
-            "conversation_id": conversation_id,
-            "files": files,
+
+        params = {
+            "url": Dify.base_url + "/chat-messages",
+            "headers": {**self.headers, "Content-Type": "application/json"},
+            "json": {
+                "inputs": inputs,
+                "query": query,
+                "response_mode": response_mode,
+                "user": self.user_name,
+                "conversation_id": conversation_id,
+                "files": files,
+            },
         }
+
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                url=Dify.base_url + end_point, headers=headers, json=data
-            ) as response:
+            async with session.post(**params) as response:
                 if response.status != 200:
                     raise Exception(
                         f"Error: {response.status} - {await response.text()}"
@@ -104,21 +105,24 @@ class Dify:
     async def upload_file(self, filepath: Path):
         if not filepath.exists():
             raise FileNotFoundError
-        endpoint = "/files/upload"
-        content_type = self._filepath_to_content_type(filepath=filepath)
+
+        form = aiohttp.FormData()
+        form.add_field(
+            name="file",
+            value=filepath.read_bytes(),
+            filename=filepath.name,
+            content_type=self._filepath_to_content_type(filepath=filepath),
+        )
+        form.add_field(name="user", value=self.user_name)
+
+        params = {
+            "url": Dify.base_url + "/files/upload",
+            "headers": self.headers,
+            "data": form,
+        }
 
         async with aiohttp.ClientSession() as session:
-            form = aiohttp.FormData()
-            form.add_field(
-                name="file",
-                value=filepath.read_bytes(),
-                filename=filepath.name,
-                content_type=content_type,
-            )
-            form.add_field(name="user", value=self.user_name)
-            async with session.post(
-                url=Dify.base_url + endpoint, headers=self.headers, data=form
-            ) as response:
+            async with session.post(**params) as response:
                 if response.status != 201:
                     raise Exception(
                         f"Error: {response.status} - {await response.text()}"

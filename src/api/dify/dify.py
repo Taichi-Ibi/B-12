@@ -2,8 +2,12 @@ import aiohttp
 from pathlib import Path
 from typing import Any
 
-from dotmap import DotMap
 import json
+
+from utils import ConfigLoader
+
+config_loader = ConfigLoader()
+CONFIG = config_loader.get_config()
 
 
 class Dify:
@@ -12,13 +16,12 @@ class Dify:
     def __init__(
         self,
         app_name: str,
-        config: DotMap,
     ) -> None:
-        self.app = config.dify.get(app_name, None)
+        self.app = CONFIG.dify.get(app_name, None)
         self.headers = {
             "Authorization": f"Bearer {self.app.api_key}",
         }
-        self.user_name = config.user_name
+        self.user_name = CONFIG.user_name
 
     def _filepath_to_content_type(self, filepath: Path) -> str:
         image_extensions = {

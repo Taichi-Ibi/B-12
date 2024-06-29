@@ -1,5 +1,5 @@
 from utils import ConfigLoader
-from dify import Dify
+from api import Dify, Jina
 import asyncio
 from pprint import pprint
 
@@ -8,6 +8,10 @@ config = config_loader.get_config()
 
 
 async def test():
+    jina = Jina()
+    res = await jina.search(query="Japan Capital")
+    print(res)
+    exit()
     dify = Dify(
         config=config,
         # app_name="summarizer",

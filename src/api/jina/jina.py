@@ -1,4 +1,5 @@
 import aiohttp
+from urllib.parse import quote
 
 from utils import ConfigLoader
 
@@ -24,9 +25,9 @@ class Jina:
                     )
 
     async def read(self, url: str) -> str:
-        base_url = "https://r.jina.ai/"
-        return await self._call_api(url=base_url + url, required_status=200)
+        url = "https://r.jina.ai/" + url
+        return await self._call_api(url=url, required_status=200)
 
     async def search(self, query: str) -> str:
-        base_url = "https://s.jina.ai/"
-        return await self._call_api(url=base_url + query, required_status=200)
+        url = "https://s.jina.ai/" + quote(query)
+        return await self._call_api(url=url, required_status=200)

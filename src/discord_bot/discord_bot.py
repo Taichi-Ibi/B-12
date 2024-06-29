@@ -2,38 +2,52 @@ from abc import ABC, abstractmethod
 
 import discord
 
+from src.utils import find_urls
+from src.utils import ConfigLoader
+
+config_loader = ConfigLoader()
+CONFIG = config_loader.get_config()
+
+
 class DiscordBot(ABC):
-    def __init__(self, token):
-        self.token = token
+    @property
+    @abstractmethod
+    def token(self):
+        pass
+
+    def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
         self.client = discord.Client(intents=intents)
-        
+
         @self.client.event
         async def on_ready():
-            print(f'We have logged in as {self.client.user}')
-        
+            print(f"We have logged in as {self.client.user}")
+
         @self.client.event
         async def on_message(message):
             if message.author == self.client.user:
                 return
-            await self.reply(message=message)
+            await self.handle_message(message=message)
 
     def run(self):
         self.client.run(self.token)
 
     @abstractmethod
-    async def reply(self, message):
+    async def handle_message(self, message):
         pass
 
+
 class ThirdEye(DiscordBot):
-    async def reply(self, message):
+    @property
+    def token(self):
+        return CONFIG.discord.thirdeye.api_key
+
+    async def handle_message(self, message):
         thread_name = "New Thread"
         thread = await message.create_thread(name=thread_name)
         content = message.content
-        await thread.send(content)
-
-# 使用例
-if __name__ == "__main__":
-    bot = ThirdEye('MTI1NDAxNTk2MDQwNzM0MzE1NA.GqsmsF.sxaoQB4HS0jQcTA5oeDQeNU8uiBF-We5H_8Cp8')
-    bot.run()
+        urls = find_urls(text=content)
+        if urls:
+            for url in urls:
+                await thread.send(url)

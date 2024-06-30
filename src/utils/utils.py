@@ -9,6 +9,7 @@ from pypdf import PdfReader
 from toolz import pipe
 
 
+@dataclass
 class Doc:
     title: str
     text: str
@@ -30,7 +31,7 @@ class HttpClient:
     }
 
     def __init__(self) -> None:
-        self.save_dir = Path("./data/image")
+        self.save_dir: Path = Path("./data/image")
         self.url: str = None
         self.content_type: str = None
         self.cotent: bytes = None

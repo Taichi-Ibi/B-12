@@ -61,14 +61,14 @@ class ThirdEye(DiscordBot):
 
         # parse content
         contents = await client.parse_content()
-            
+
         # create thread
-        thread = await message.create_thread(name=contents["title"])
+        thread = await message.create_thread(name=contents.title)
 
         # respond
         journalist = Dify(app_name="journalist")
         answer = ""
-        async for chunk in journalist.chat(query=contents["text"]):
+        async for chunk in journalist.chat(query=contents.text):
             event = chunk.get("event", None)
             if event in {"message", "agent_message"}:
                 answer += chunk["answer"]

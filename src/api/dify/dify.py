@@ -55,7 +55,7 @@ class Dify:
                         lines = chunk[0].decode("utf-8").split("\n\n")
                         for line in lines:
                             try:
-                                yield json.loads(line.replace("data: ", ""))
+                                yield json.loads(line.lstrip("data: "))
                             except json.JSONDecodeError:
                                 continue
                 else:

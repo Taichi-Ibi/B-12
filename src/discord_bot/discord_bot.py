@@ -45,6 +45,11 @@ class DiscordBot(ABC):
 
 
 class ThirdEye(DiscordBot):
+    """
+    TODO
+    - Chat対応
+    - imageとpdfの対応
+    """
 
     async def handle_message(self, message):
         # fetch url

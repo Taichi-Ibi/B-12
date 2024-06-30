@@ -57,7 +57,7 @@ class HttpClient:
             f.write(self.content)
         return file_path.resolve()
 
-    async def read_text(self):
+    async def parse_content(self):
         """TODO pdfにも対応する"""
         # web page
         if self.content_type.startswith("text/html"):
@@ -89,7 +89,7 @@ async def main():
     # url = "https://bocek.co.jp/media/wp-content/uploads/2024/04/prompty_banner_DL.png"
     client = HttpClient()
     await client.curl(url=url)
-    res = await client.read_text()
+    res = await client.parse_content()
     # path = await web.save_image()
     # print(path)
     # res = await client.read_text()

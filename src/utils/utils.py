@@ -1,14 +1,17 @@
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 import re
 
 import aiohttp
 from bs4 import BeautifulSoup
-from pdfminer.high_level import extract_text
-from pdfminer.pdfparser import PDFParser
-from pdfminer.pdfdocument import PDFDocument
-from toolz import pipe
 from pypdf import PdfReader
+from toolz import pipe
+
+
+class Doc:
+    title: str
+    text: str
 
 
 def find_urls(text: str) -> list[str]:
@@ -32,12 +35,6 @@ class HttpClient:
         self.content_type: str = None
         self.cotent: bytes = None
 
-    def _remove_bom(self, text: str):
-        if text.startswith("\ufeff"):
-            return text.lstrip("\ufeff")
-        else:
-            return text
-
     async def curl(self, url: str) -> None:
         self.url = url
         async with aiohttp.ClientSession() as session:
@@ -51,33 +48,32 @@ class HttpClient:
         if save_dir is not None:
             self.save_dir = Path(save_dir)
         self.content_type.startswith("image")
-        file_name = Path(self.url).name
+        file_name = self.url.split("/")[-1]
         file_path = self.save_dir / file_name
-        with open(file_path, "wb") as f:
-            f.write(self.content)
+        file_path.write_bytes(self.content)
         return file_path.resolve()
 
     async def parse_content(self):
-        """TODO pdfにも対応する"""
         # web page
         if self.content_type.startswith("text/html"):
             soup = BeautifulSoup(self.content, "html.parser")
             title = soup.find("title").text
             text = soup.find("body").get_text().strip()
-            return {"title": title, "text": text}
+            return Doc(title=title, text=text)
         # pdf
         elif self.content_type.endswith("pdf"):
             bytes_stream = BytesIO(self.content)
             reader = PdfReader(bytes_stream)
             text = ""
             for page in reader.pages:
-                page = reader.pages[0]
                 text += page.extract_text()
             _title = "Title not found"
             title = pipe(
                 reader.metadata.get("/Title", _title), lambda x: x if x else _title
             )
-            return {"title": title, "text": text.strip()}
+            return Doc(title=title, text=text.strip())
+        else:
+            raise NotImplementedError
 
 
 async def main():

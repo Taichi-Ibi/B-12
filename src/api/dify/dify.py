@@ -4,7 +4,7 @@ from typing import Any
 
 import json
 
-from utils import ConfigLoader
+from src.utils import ConfigLoader
 
 config_loader = ConfigLoader()
 CONFIG = config_loader.get_config()
@@ -37,7 +37,17 @@ class Dify:
         else:
             raise NotImplementedError
 
-    async def _call_api(self, params: dict[str, Any], required_status: int):
+    async def _call_blocking(self, params: dict[str, Any], required_status: int):
+        async with aiohttp.ClientSession() as session:
+            async with session.post(**params) as response:
+                if response.status == required_status:
+                    return await response.json()
+                else:
+                    raise Exception(
+                        f"Error: {response.status} - {await response.text()}"
+                    )
+
+    async def _call_streaming(self, params: dict[str, Any], required_status: int):
         async with aiohttp.ClientSession() as session:
             async with session.post(**params) as response:
                 if response.status == required_status:
@@ -69,8 +79,7 @@ class Dify:
                 "files": files,
             },
         }
-        async for response in self._call_api(params=params, required_status=200):
-            yield response
+        return await self._call_blocking(params=params, required_status=200)
 
     async def chat(
         self,
@@ -78,31 +87,21 @@ class Dify:
         inputs: dict[str, str] = None,
         conversation_id: str = None,
         files: list[dict[str, str]] = None,
-        response_mode: str = "blocking",
     ):
-        # check args
-        response_modes = {"blocking", "streaming"}
-        if response_mode not in response_modes:
-            raise ValueError(
-                f"response_mode must be in {str(response_modes)}, but got '{response_mode}'"
-            )
-        if self.app.type == "agent" and response_mode == "blocking":
-            raise NotImplementedError
-
         params = {
             "url": Dify.base_url + "/chat-messages",
             "headers": {**self.headers, "Content-Type": "application/json"},
             "json": {
                 "inputs": inputs,
                 "query": query,
-                "response_mode": response_mode,
+                "response_mode": "streaming",
                 "user": self.user_name,
                 "conversation_id": conversation_id,
                 "files": files,
             },
         }
-        async for response in self._call_api(params=params, required_status=200):
-            yield response
+        async for response in self._call_streaming(params=params, required_status=200):
+            yield response            
 
     async def upload_file(self, filepath: str):
         filepath = Path(filepath)
@@ -123,5 +122,4 @@ class Dify:
             "headers": self.headers,
             "data": form,
         }
-        async for response in self._call_api(params=params, required_status=201):
-            yield response
+        return await self._call_blocking(params=params, required_status=201)

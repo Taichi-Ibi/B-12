@@ -1,7 +1,7 @@
 import aiohttp
 from urllib.parse import quote
 
-from utils import ConfigLoader
+from src.utils import ConfigLoader
 
 config_loader = ConfigLoader()
 CONFIG = config_loader.get_config()

@@ -1,21 +1,20 @@
 from abc import ABC, abstractmethod
+import logging
 
 import discord
 
-from src.utils import find_urls
-from src.utils import ConfigLoader
+from src.api import Dify
+from src.utils import ConfigLoader, find_urls, curl, web_browsing
 
+logging.basicConfig(level=logging.INFO)
 config_loader = ConfigLoader()
 CONFIG = config_loader.get_config()
 
 
 class DiscordBot(ABC):
-    @property
-    @abstractmethod
-    def token(self):
-        pass
 
-    def __init__(self):
+    def __init__(self, bot_name):
+        self.bot_name = bot_name
         intents = discord.Intents.default()
         intents.message_content = True
         self.client = discord.Client(intents=intents)
@@ -30,6 +29,13 @@ class DiscordBot(ABC):
                 return
             await self.handle_message(message=message)
 
+    @property
+    def token(self):
+        bot = CONFIG.discord.get(self.bot_name, None)
+        if bot is None:
+            raise ValueError
+        return bot.api_key
+
     def run(self):
         self.client.run(self.token)
 
@@ -39,15 +45,28 @@ class DiscordBot(ABC):
 
 
 class ThirdEye(DiscordBot):
-    @property
-    def token(self):
-        return CONFIG.discord.thirdeye.api_key
 
     async def handle_message(self, message):
-        thread_name = "New Thread"
-        thread = await message.create_thread(name=thread_name)
-        content = message.content
-        urls = find_urls(text=content)
-        if urls:
-            for url in urls:
-                await thread.send(url)
+        # fetch url
+        urls = find_urls(text=message.content)
+        if not urls:
+            return
+        curl_response = await curl(url=urls[0])
+
+        # web browsing
+        if curl_response["content_type"].startswith("text/html"):
+            web_contents = web_browsing(content=curl_response["content"])
+        else:
+            raise NotImplementedError
+            
+        # create thread
+        thread = await message.create_thread(name=web_contents["title"])
+
+        # respond
+        journalist = Dify(app_name="journalist")
+        answer = ""
+        async for chunk in journalist.chat(query=web_contents["text"]):
+            event = chunk.get("event", None)
+            if event in {"message", "agent_message"}:
+                answer += chunk["answer"]
+        await thread.send(answer.strip())

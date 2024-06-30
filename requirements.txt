@@ -4,3 +4,4 @@ requests
 Pillow
 pyyaml
 dotmap
+beautifulsoup4 

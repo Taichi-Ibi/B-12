@@ -5,3 +5,5 @@ Pillow
 pyyaml
 dotmap
 beautifulsoup4 
+pypdf
+toolz

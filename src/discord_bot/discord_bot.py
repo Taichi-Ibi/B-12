@@ -4,7 +4,7 @@ import logging
 import discord
 
 from src.api import Dify
-from src.utils import ConfigLoader, find_urls, curl, web_browsing
+from src.utils import ConfigLoader, find_urls, HttpClient
 
 logging.basicConfig(level=logging.INFO)
 config_loader = ConfigLoader()
@@ -56,13 +56,11 @@ class ThirdEye(DiscordBot):
         urls = find_urls(text=message.content)
         if not urls:
             return
-        curl_response = await curl(url=urls[0])
+        client = HttpClient()
+        await client.curl(url=urls[0])
 
         # web browsing
-        if curl_response["content_type"].startswith("text/html"):
-            web_contents = web_browsing(content=curl_response["content"])
-        else:
-            raise NotImplementedError
+        web_contents = await client.read_text()
             
         # create thread
         thread = await message.create_thread(name=web_contents["title"])

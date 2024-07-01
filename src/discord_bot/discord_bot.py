@@ -61,6 +61,7 @@ class ThirdEye(DiscordBot):
 
         # parse content
         contents = await client.parse_content()
+        print(contents)
 
         # create thread
         thread = await message.create_thread(name=contents.title)

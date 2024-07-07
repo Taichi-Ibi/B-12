@@ -143,6 +143,7 @@ class BotCaller:
                 answers.append(answer_w_filename)
                 if i == 0:
                     await self._thread.send(metadata)
+                    _, self._conversation_id = link_to_metadata(input_str=metadata)
                 await self._thread.send(answer_w_filename)
             # summarize
             whole_answer = "\n\n".join(answers)

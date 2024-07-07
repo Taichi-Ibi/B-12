@@ -3,8 +3,7 @@ import logging
 
 import discord
 
-from src.api import Dify
-from src.utils import ConfigLoader, find_urls, HttpClient
+from src.utils import ConfigLoader
 
 logging.basicConfig(level=logging.INFO)
 config_loader = ConfigLoader()
@@ -40,37 +39,5 @@ class DiscordBot(ABC):
         self.client.run(self.token)
 
     @abstractmethod
-    async def handle_message(self, message):
+    async def handle_message(self, message, thread):
         pass
-
-
-class ThirdEye(DiscordBot):
-    """
-    TODO
-    - Chat対応
-    - imageとpdfの対応
-    """
-
-    async def handle_message(self, message):
-        # fetch url
-        urls = find_urls(text=message.content)
-        if not urls:
-            return
-        client = HttpClient()
-        await client.curl(url=urls[0])
-
-        # parse content
-        contents = await client.parse_content()
-        print(contents)
-
-        # create thread
-        thread = await message.create_thread(name=contents.title)
-
-        # respond
-        journalist = Dify(app_name="journalist")
-        answer = ""
-        async for chunk in journalist.chat(query=contents.text):
-            event = chunk.get("event", None)
-            if event in {"message", "agent_message"}:
-                answer += chunk["answer"]
-        await thread.send(answer.strip())

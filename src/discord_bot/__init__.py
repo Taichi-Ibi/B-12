@@ -1,1 +1,1 @@
-from .discord_bot import ThirdEye
+from .b12_bot import B12Bot

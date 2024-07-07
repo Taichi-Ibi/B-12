@@ -112,7 +112,7 @@ class BotCaller:
         # 初回
         if self._thread is None:
             answers = []
-            for attachment in self.message.attachments:
+            for i, attachment in enumerate(self.message.attachments):
                 if self._thread is None:
                     # create thread
                     self._thread = await self.message.create_thread(
@@ -139,7 +139,7 @@ class BotCaller:
                 )
                 answer_w_filename = f"> {contents.file_path.name}\n\n{answer}"
                 answers.append(answer_w_filename)
-                if self._thread is None:
+                if i == 0:
                     await self._thread.send(metadata)
                 await self._thread.send(answer_w_filename)
             # summarize

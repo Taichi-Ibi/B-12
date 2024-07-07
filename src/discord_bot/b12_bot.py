@@ -132,7 +132,9 @@ class BotCaller:
                     query = "No message provided."
                 print(query)
                 stream_response = dify.chat(
-                    query=query, files=prep_files(file_id=response["id"])
+                    query=query,
+                    conversation_id=self._conversation_id,
+                    files=prep_files(file_id=response["id"]),
                 )
                 metadata, answer = await self._handle_stream(
                     stream_response=stream_response

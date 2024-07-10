@@ -171,15 +171,18 @@ class BotCaller:
 class B12Bot(DiscordBot):
 
     async def handle_message(self, message):
-        async with message.channel.typing():
-            # set bot state
-            bot_caller = BotCaller(message=message)
-            await bot_caller.resume()
-            if bot_caller._app_name is None:
-                if message.attachments:
-                    bot_caller.set_app_name("thirdeye")
-                elif find_urls(message.content):
-                    bot_caller.set_app_name("journalist")
-                else:
-                    bot_caller.set_app_name("b12")
-        await bot_caller.call()
+        try:
+            async with message.channel.typing():
+                # set bot state
+                bot_caller = BotCaller(message=message)
+                await bot_caller.resume()
+                if bot_caller._app_name is None:
+                    if message.attachments:
+                        bot_caller.set_app_name("thirdeye")
+                    elif find_urls(message.content):
+                        bot_caller.set_app_name("journalist")
+                    else:
+                        bot_caller.set_app_name("b12")
+            await bot_caller.call()
+        except Exception as e:
+            await message.channel.send(f"error: {e}")
